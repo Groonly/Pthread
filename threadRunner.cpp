@@ -3,11 +3,37 @@
 #include <iostream>
 #include <cstdint>
 #include <map>
+#include <vector>
 
 
-struct DeferredCaller {
-  int id[2] = {-1,-1};
-  std::function<void()> f[2];
+
+class ThreadSafeDeferredCaller {
+
+typedef std::function<void()> DeferredMethod;
+
+public:
+  ThreadSafeDeferredCaller(){pthread_mutex_init(&mutex, NULL);}
+  void SetFunc(DeferredMethod func){
+    pthread_mutex_lock(&mutex);
+    f.push_back(func);
+    pthread_mutex_unlock(&mutex);
+  }
+  void RunFunc(){
+    pthread_mutex_lock(&mutex);
+    if(f.empty()){
+      pthread_mutex_unlock(&mutex);
+      return;
+    }
+    else{
+      DeferredMethod func = f.back();
+      func();
+      f.pop_back();
+      pthread_mutex_unlock(&mutex);
+    }
+  }
+private:
+  pthread_mutex_t mutex;
+  std::vector<std::function<void()>> f;
 };
 
 
@@ -48,49 +74,43 @@ void OnThreadText(void){std::cout << "TEXT" << std::endl;}
 class Math : public IThread {
 private:
   double latestValue = 0;
-  DeferredCaller& DFC;
+  ThreadSafeDeferredCaller& DFC;
   Caller& CLS;
 public:
-  Math(DeferredCaller& deferredCaller, Caller& caller) : DFC(deferredCaller), CLS(caller) {}
+  Math(ThreadSafeDeferredCaller& deferredCaller, Caller& caller) : DFC(deferredCaller), CLS(caller) {}
   template<typename T>
   void add(T value1, T value2){this->latestValue = value1 + value2;}
-  int Run(){add(2,3); DFC.f[0] = std::bind(OnThreadComplete);  DFC.id[0] = 1; CLS.SetInt(7); return 1;}
+  int Run(){add(2,3); DFC.SetFunc(std::bind(OnThreadComplete)); CLS.SetInt(latestValue); return 1;}
   double GetlatestValue(void){return latestValue;}
 };
 
 class Text : public IThread{
 private:
-  DeferredCaller& DFC;
+  ThreadSafeDeferredCaller& DFC;
   Caller& CLS;
   int i;
 public:
-  Text(DeferredCaller& deferredCaller, Caller& caller) : DFC(deferredCaller), CLS(caller) {}
-  int Run(){DFC.f[1] = std::bind(OnThreadText); DFC.id[1] = 1; CLS.GetInt(i); return 1;}
+  Text(ThreadSafeDeferredCaller& deferredCaller, Caller& caller) : DFC(deferredCaller), CLS(caller) {}
+  int Run(){DFC.SetFunc(std::bind(OnThreadText)); return 1;}
+  int GetInt(void){return i;}
 };
 
 
 int main(){
 std::map<std::string, double> OperationResults;
 
+ThreadSafeDeferredCaller threadSafeDeferredCaller;
 
-DeferredCaller deferredCalller;
 Caller caller;
-Math m(deferredCalller, caller);
-Text te(deferredCalller, caller);
+
+Math m(threadSafeDeferredCaller, caller);
+Text te(threadSafeDeferredCaller, caller);
 Thread t;
 t.Fork(&m);
 t.Fork(&te);
 
 while(1){
-  if(deferredCalller.id[0] > 0){
-    deferredCalller.f[0]();
-    deferredCalller.id[0] = -1;
-  }
-  if(deferredCalller.id[1] > 0){
-    deferredCalller.f[1]();
-    std::cout << caller.GetInt() << std::endl;
-    deferredCalller.id[1] = -1;
-  }
+  threadSafeDeferredCaller.RunFunc();
 }
 
 std::cout << t.Join() << std::endl;
