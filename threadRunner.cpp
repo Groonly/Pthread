@@ -4,7 +4,45 @@
 #include <cstdint>
 #include <map>
 #include <vector>
+#include <list>
 
+class IThread{
+public:
+  IThread(){}
+  virtual ~IThread(){}
+  virtual  Run() = 0;
+};
+
+
+class ThreadedQueue {
+private:
+  pthread_t ti;
+  pthread_mutex_t mutex;
+  bool WorkerThreadRunning = true;
+
+  std::list<std::function<void()>> work;
+  void DoWork(){pthread_mutex_lock(&mutex); if(work.empty()) return; auto f=work.front(); work.pop_front(); pthread_mutex_unlock(&mutex); f();}
+  WorkThread(){ while(WorkerThreadRunning){ DoWork();} }
+  static void*ThreadRun(void *f){return reinterpret_cast<void*>(static_cast<ThreadedQueue*>(f)->WorkThread());}
+public:
+  ThreadedQueue(){pthread_mutex_init(&mutex, NULL); pthread_create(&ti, NULL, ThreadRun, this);}
+  virtual ~ThreadedQueue(){ pthread_join(ti, NULL); }
+
+  bool PushWork(std::function<void()> func){pthread_mutex_lock(&mutex); work.push_back(func); pthread_mutex_unlock(&mutex);}
+  bool CancelJob(){}
+  int PendingJobs(){}
+};
+
+
+class Thread {
+private:
+  pthread_t ti;
+  static void*ThreadRun(void *f) {return reinterpret_cast<void*>(static_cast<IThread*>(f)->Run());}
+public:
+
+  inline void Fork(IThread *t){ pthread_create(&ti, NULL, ThreadRun, t);}
+  long Join(){void *result; pthread_join(ti, &result); return static_cast<int>(reinterpret_cast<std::uintptr_t>(result));}
+};
 
 
 class ThreadSafeDeferredCaller {
@@ -49,27 +87,10 @@ private:
 
 };
 
-
-class IThread{
-public:
-  IThread(){}
-  virtual ~IThread(){}
-  virtual  Run() = 0;
-};
-
-
-class Thread {
-private:
-  pthread_t ti;
-  static void*ThreadRun(void *f) {return reinterpret_cast<void*>(static_cast<IThread*>(f)->Run());}
-public:
-
-  inline void Fork(IThread *t){ pthread_create(&ti, NULL, ThreadRun, t);}
-  long Join(){void *result; pthread_join(ti, &result); return static_cast<int>(reinterpret_cast<std::uintptr_t>(result));}
-};
-
 void OnThreadComplete(void){std::cout << "MATH" << std::endl;}
 void OnThreadText(void){std::cout << "TEXT" << std::endl;}
+
+
 
 class Math : public IThread {
 private:
@@ -81,6 +102,7 @@ public:
   template<typename T>
   void add(T value1, T value2){this->latestValue = value1 + value2;}
   int Run(){add(2,3); DFC.SetFunc(std::bind(OnThreadComplete)); CLS.SetInt(latestValue); return 1;}
+  int Run(int i){ Thread te; te.Fork(this);}
   double GetlatestValue(void){return latestValue;}
 };
 
@@ -103,10 +125,14 @@ ThreadSafeDeferredCaller threadSafeDeferredCaller;
 
 Caller caller;
 
+
+ThreadedQueue tq;
+tq.PushWork(OnThreadComplete);
 Math m(threadSafeDeferredCaller, caller);
 Text te(threadSafeDeferredCaller, caller);
 Thread t;
-t.Fork(&m);
+//t.Fork(&m);
+m.Run(1);
 t.Fork(&te);
 
 while(1){
