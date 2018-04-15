@@ -30,7 +30,7 @@ public:
 
   bool PushWork(std::function<void()> func){pthread_mutex_lock(&mutex); work.push_back(func); pthread_mutex_unlock(&mutex);}
   bool CancelJob(){}
-  int PendingJobs(){}
+  int PendingJobs(){pthread_mutex_lock(&mutex); int i = work.size(); pthread_mutex_unlock(&mutex); return i; }
 };
 
 
@@ -89,7 +89,7 @@ private:
 
 void OnThreadComplete(void){std::cout << "MATH" << std::endl;}
 void OnThreadText(void){std::cout << "TEXT" << std::endl;}
-
+void WorkQueueJob(){for(int i = 0; i < 1000000; i++); std::cout << "Done" << "\n"; }
 
 
 class Math : public IThread {
@@ -120,14 +120,15 @@ public:
 
 int main(){
 std::map<std::string, double> OperationResults;
-
 ThreadSafeDeferredCaller threadSafeDeferredCaller;
-
 Caller caller;
-
-
 ThreadedQueue tq;
-tq.PushWork(OnThreadComplete);
+
+for(int i = 0; i < 100; i++){
+  tq.PushWork(WorkQueueJob);
+  std::cout << "PendingJobs: " << tq.PendingJobs() << "\n";
+}
+
 Math m(threadSafeDeferredCaller, caller);
 Text te(threadSafeDeferredCaller, caller);
 Thread t;
