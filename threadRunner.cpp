@@ -5,15 +5,19 @@
 #include <map>
 #include <vector>
 #include <list>
+#include "ThreadQueue.h"
+#include "ThreadSafeDeferredCaller.h"
+#include "Thread.h"
 
+/*
 class IThread{
 public:
   IThread(){}
   virtual ~IThread(){}
   virtual  Run() = 0;
 };
-
-
+*/
+/*
 class ThreadedQueue {
 private:
   pthread_t ti;
@@ -29,11 +33,12 @@ public:
   virtual ~ThreadedQueue(){ pthread_join(ti, NULL); }
 
   bool PushWork(std::function<void()> func){pthread_mutex_lock(&mutex); work.push_back(func); pthread_mutex_unlock(&mutex);}
-  bool CancelJob(){}
+  bool CancelAllJobs() { work.clear(); }
   int PendingJobs(){pthread_mutex_lock(&mutex); int i = work.size(); pthread_mutex_unlock(&mutex); return i; }
 };
 
-
+*/
+/*
 class Thread {
 private:
   pthread_t ti;
@@ -43,9 +48,9 @@ public:
   inline void Fork(IThread *t){ pthread_create(&ti, NULL, ThreadRun, t);}
   long Join(){void *result; pthread_join(ti, &result); return static_cast<int>(reinterpret_cast<std::uintptr_t>(result));}
 };
+*/
 
-
-class ThreadSafeDeferredCaller {
+/*class ThreadSafeDeferredCaller {
 
 typedef std::function<void()> DeferredMethod;
 
@@ -72,8 +77,7 @@ public:
 private:
   pthread_mutex_t mutex;
   std::vector<std::function<void()>> f;
-};
-
+};*/
 
 class Caller {
 public:
