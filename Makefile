@@ -1,12 +1,12 @@
 BUILD_CPP =$(wildcard *.cpp)
 OBJECTS=$(BUILD_CPP:.cpp=.o)
-CC=G++
+CC=g++
 LIBS = -lpthread
 LFLAGS = -g
-CFLAGS = -c
+CFLAGS = -c -std=c++14
 
-test: $(OBJECTS)
-	$(CC) $(LFLAGS) $(OBJECTS) $(LIBS) -o PhreadQueue
+main: $(OBJECTS)
+	$(CC) $(LFLAGS) $(OBJECTS) $(LIBS) -o $@
 
 %.o: %.cpp
 	$(CC) $(CFLAGS) $(BUILD_CPP)

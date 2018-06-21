@@ -2,5 +2,5 @@ class IThread{
 public:
   IThread(){}
   virtual ~IThread(){}
-  virtual  Run() = 0;
+  int virtual Run() = 0;
 };

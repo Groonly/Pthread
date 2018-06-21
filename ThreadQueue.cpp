@@ -10,11 +10,12 @@ void ThreadedQueue::DoWork()
   f();
 }
 
-ThreadedQueue::WorkThread()
+bool ThreadedQueue::WorkThread()
 {
   while(WorkerThreadRunning){
      DoWork();
    }
+  return false;
  }
 void* ThreadedQueue::ThreadRun(void *f)
 {

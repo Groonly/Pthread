@@ -2,6 +2,7 @@
 #include <iostream>
 #include <list>
 #include <memory>
+#include <functional>
 
 class ThreadedQueue {
 private:
@@ -11,7 +12,7 @@ private:
   std::list<std::function<void()>> work;
 
   void DoWork();
-  WorkThread();
+  bool WorkThread();
   static void*ThreadRun(void *f);
 
 public:

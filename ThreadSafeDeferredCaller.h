@@ -1,6 +1,7 @@
 #include <vector>
 #include <pthread.h>
 #include <memory>
+#include <functional>
 
 class ThreadSafeDeferredCaller {
 
